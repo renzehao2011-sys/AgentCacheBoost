@@ -1,0 +1,52 @@
+# ============================================================
+# Whitelist strategy: ignore EVERYTHING by default, then allow
+# only the files this repository ships.
+# Layout: repo root = LICENSE / README* / skills/<skill-name>/
+# ============================================================
+
+# 1) Ignore everything at the repository root
+/*
+
+# 2) Allow repository-level files, and the skills/ folder
+!/.gitignore
+!/.gitattributes
+!/LICENSE
+!/README.md
+!/README.zh-CN.md
+!/skills/
+
+# 3) skills/ — descend one level at a time, allow only what we ship
+/skills/*
+!/skills/*/
+/skills/*/*
+!/skills/*/SKILL.md
+!/skills/*/skill.md
+!/skills/*/scripts/
+/skills/*/scripts/*
+!/skills/*/scripts/*.py
+
+# 5) Safety net: never commit these, whatever the layout becomes.
+#    (The last matching pattern wins — keep this block at the end.)
+__pycache__/
+*.py[cod]
+*.pyo
+*.so
+*.egg-info/
+.venv/
+venv/
+.env
+.env.*
+*.key
+*.pem
+*.p12
+*.zip
+*.log
+handoff/
+room_db*
+*.sqlite
+*.db
+.DS_Store
+Thumbs.db
+desktop.ini
+.idea/
+.vscode/
