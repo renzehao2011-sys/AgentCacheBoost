@@ -29,6 +29,8 @@
 
 ---
 
+> **DSH / dsh-go 用户看这里**：本仓库新增了 `dsh/` 目录，把同样的方法论移植到 DeepSeek Harness——DSH 版交接 Skill、手机 UI 锚点规范，以及一个 dsh-go 原生插件（输入框上方直接显示缓存命中率与上下文窗口）。原 Operit 内容不受影响。见 [dsh/README.zh-CN.md](dsh/README.zh-CN.md) 与 [CHANGELOG.md](CHANGELOG.md)。
+
 ## 关键结论（全部来自实测）
 
 1. **新对话的首条请求必然 0 % 命中**——这是数学必然，不是故障。判断好坏要看**同一对话内的趋势**，别看单条请求。

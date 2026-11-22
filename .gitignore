@@ -13,7 +13,9 @@
 !/LICENSE
 !/README.md
 !/README.zh-CN.md
+!/CHANGELOG.md
 !/skills/
+!/dsh/
 
 # 3) skills/ — descend one level at a time, allow only what we ship
 /skills/*
@@ -24,6 +26,28 @@
 !/skills/*/scripts/
 /skills/*/scripts/*
 !/skills/*/scripts/*.py
+
+# 4) dsh/ — DSH (DeepSeek Harness) 适配版
+/dsh/*
+!/dsh/README.zh-CN.md
+!/dsh/skills/
+/dsh/skills/*
+!/dsh/skills/*/
+/dsh/skills/*/*
+!/dsh/skills/*/SKILL.md
+!/dsh/skills/*/scripts/
+/dsh/skills/*/scripts/*
+!/dsh/skills/*/scripts/*
+!/dsh/dsh-go-plugin/
+/dsh/dsh-go-plugin/*
+!/dsh/dsh-go-plugin/*/
+/dsh/dsh-go-plugin/*/*
+!/dsh/dsh-go-plugin/*/*.md
+!/dsh/dsh-go-plugin/*/*.json
+!/dsh/dsh-go-plugin/*/*.yml
+!/dsh/dsh-go-plugin/*/lib/
+/dsh/dsh-go-plugin/*/lib/*
+!/dsh/dsh-go-plugin/*/lib/*
 
 # 5) Safety net: never commit these, whatever the layout becomes.
 #    (The last matching pattern wins — keep this block at the end.)

@@ -29,6 +29,8 @@ It also settles a myth: a widely-shared snippet claiming it "enables DeepSeek co
 
 ---
 
+> **DSH / dsh-go users**: this repo now ships a `dsh/` directory that ports the same methodology to DeepSeek Harness — a DSH handoff skill, phone UI anchor rules, and a native dsh-go plugin that shows cache hit rate and context window above the composer. The Operit content is unchanged. See [dsh/README.zh-CN.md](dsh/README.zh-CN.md) and [CHANGELOG.md](CHANGELOG.md).
+
 ## Key findings (all measured)
 
 1. **A brand-new conversation's first request always has a 0 % hit rate.** That is arithmetic, not a fault. Judge a hit rate by the *trend inside one conversation*, never by a single request.

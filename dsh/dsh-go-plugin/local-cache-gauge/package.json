@@ -1,0 +1,37 @@
+{
+  "name": "local-cache-gauge",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "lib/index.js",
+  "description": "在输入框上方与回合脚注显示当前会话的缓存命中率与上下文窗口，并提供体检面板。",
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    }
+  },
+  "engines": {
+    "dsh": ">=0.2.1-rc.2 <0.3.0-0"
+  },
+  "dshGo": {
+    "v": 1,
+    "title": { "zh": "缓存体检", "en": "Cache gauge" },
+    "icon": "chart",
+    "contributes": {
+      "composer.strip": [
+        { "id": "gauge", "icon": "chart", "panel": "gauge-panel" }
+      ],
+      "turn.note": [
+        { "id": "gauge-note" }
+      ],
+      "panels": [
+        {
+          "id": "gauge-panel",
+          "title": "缓存体检",
+          "icon": "chart",
+          "placement": ["session.tab", "features", "chat.panel"]
+        }
+      ]
+    }
+  }
+}
