@@ -1,5 +1,12 @@
 # 变更记录
 
+## v0.2.1 — 文档对齐
+
+- 重写 `README.zh-CN.md`：从"Operit 专用"改为"Operit + DSH 两套环境"，补目录结构、两边安装与用法、DSH 实测数据、阈值表
+- 重写 `dsh/README.zh-CN.md`：对齐 v0.2.0 实际交付（插件名、脚本参数、仪表读数口径、卸载步骤）
+- 新增 `dsh/README.md`（英文版），中英对照
+- 英文 `README.md`：加 DSH 章节与安装段，目录结构同步，思考指标那条补 DSH 说明
+
 ## v0.2.0 — DSH 适配版
 
 新增 `dsh/` 目录，把仓库从 Operit 专用扩到 **DSH（DeepSeek Harness）**，原 Operit 内容保持不变。

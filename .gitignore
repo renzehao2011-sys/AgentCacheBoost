@@ -30,6 +30,7 @@
 # 4) dsh/ — DSH (DeepSeek Harness) 适配版
 /dsh/*
 !/dsh/README.zh-CN.md
+!/dsh/README.md
 !/dsh/skills/
 /dsh/skills/*
 !/dsh/skills/*/

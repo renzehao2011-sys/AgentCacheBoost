@@ -1,73 +1,89 @@
-# AgentCacheBoost · DSH 适配版
+# DSH / dsh-go 适配版
 
-对 [renzehao2011-sys/AgentCacheBoost](https://github.com/renzehao2011-sys/AgentCacheBoost) 的评估与改写。原仓库是给 **Operit（Android AI Agent）** 写的：两个 Skill + 两个脚本。
+[English](README.md) · **简体中文**
 
-## 有用吗
+把仓库根目录那套 Operit 方法论移植到 **DeepSeek Harness（DSH）** 与手机 App **dsh-go**。原 Operit 内容全部保留、互不影响。
 
-**方法论有用，脚本原样跑不了。**
+## 和 Operit 版的差别
 
-| 部分 | 结论 |
+| 项 | Operit 版 | DSH 版 |
+|---|---|---|
+| 数据源 | `room_db` 备份 | `$DSH_HOME/sessions/<slug>/session-<id>/session.v4.jsonl.zstd` |
+| 读取方式 | Python 解析 sqlite 备份 | Node 内置 `zlib` 解多帧 zstd，零依赖 |
+| 能测到什么 | 消息条数、命中率、工具占比 | **每步 prompt token、窗口、峰值、每步命中率、思考字符膨胀** |
+| 窗口 | `currentWindowSize` 读不到 | `inputTokens + cacheReadTokens` 实测 |
+| think 指标 | 占正文 ≥18 % / ≥30 % | 累计字符 ≥50K / ≥120K + 前后半程膨胀倍数 |
+| UI 操作 | Operit 工具 + `detail=full` | `mcp__phone__*`（`screen` / `collect` / `tap` / `intent`）+ 必要时 `uiautomator dump` |
+
+为什么 think 指标要换：Operit 的"思考占正文比"在 DSH 里几乎永久触发。实测一个健康会话思考 **50K 字符**、正文只有几百字符，占比 99 % 却是正常的——真正有意义的是"思考累计多少"和"后半程比前半程涨了多少"。
+
+## 内容
+
+| 路径 | 用途 |
 |---|---|
-| 前缀卫生那几条（时间戳/UUID 不进静态前缀、`user_id` 不填随机值、采样参数救不了命中率） | 对 DSH 完全成立，直接沿用 |
-| "首条请求必然 0% 命中"、"整体命中低多是短会话占比" | 成立，而且 DSH 日志里能实测验证 |
-| `conversation_handoff/SKILL.md` 的阈值与模板 | 阈值需按 DSH 重新标定，模板可留 |
-| `android_ui_automation/SKILL.md` 的方法（先裁剪再决策） | 成立，但工具名与流程要换成 `mcp__phone__*` |
-| `context_gauge.py` | **不能用**：它解析 Operit 的 `room_db` 备份（`messages.cachedInputTokens`、`token_usage_records`）。DSH 没有这个库 |
-| `ui_prune.py` | 能用，且有个小 bug（见下） |
+| `skills/dsh_context_handoff/SKILL.md` | 交接判定：阈值、7 节无损模板、自过滤、校验清单 |
+| `skills/dsh_context_handoff/scripts/context_gauge.mjs` | 体检器：窗口 / 命中率 / 思考膨胀 / 交接判定 |
+| `skills/dsh_ui_anchors/SKILL.md` | 手机 UI 锚点规范：先裁剪再决策、靠编号而不是坐标 |
+| `skills/dsh_ui_anchors/scripts/ui_prune.py` | UI dump XML → 锚点列表（`C` 可点 / `L` 长按 / `S` 可滚 / `K` 可勾选 / `E` 选中） |
+| `dsh-go-plugin/local-cache-gauge/` | dsh-go 原生插件：状态条 + 回合脚注 + 体检面板 |
 
-它自己还顺手证伪了网上那段"开启 DeepSeek 上下文缓存"的脚本——这点也是对的，缓存默认开启。
+## 安装
 
-## 改了什么
+```bash
+# 技能
+cp -r skills/dsh_context_handoff skills/dsh_ui_anchors "${DSH_HOME:-$HOME/.dsh}/skills/"
 
-| 改动 | 说明 |
-|---|---|
-| `context_gauge.py` → `context_gauge.mjs` | 换数据源：读 `$DSH_HOME/sessions/**/session.v4.jsonl.zstd`（多帧 zstd，Node 内置 zlib 解，零依赖）。从每步 `usage` 取 `inputTokens` / `cacheReadTokens` / `outputTokens`，所以**窗口和命中率是实测值**，不是 Operit 那种"窗口读不到"。 |
-| 阈值按 DSH 重新标定 | 原版"`think` 占正文 ≥18%/≥30%"在 DSH 里几乎永久触发（实测单会话思考 21K 字符、正文只有 607 字符，占比 97% 但完全正常）。改成**思考累计字符 + 前后半程膨胀倍数**，本机实测 20K 字符 / 1.0x，不误报。 |
-| 新增可读信号 | 当前窗口、峰值窗口、常规命中率、首条命中率（单独标出"必然是 0%"）、工具输出累计 KB。 |
-| `ui_prune.py` 修 bug | 原来标记用属性首字母，`checkable` 和 `clickable` 都是 `C`（实测输出 `C,C`）。改成映射表：C 可点 / L 长按 / S 可滚 / K 可勾选 / E 选中。 |
-| 两个 SKILL.md 重写 | 换成 dsh-go 实际工具（`mcp__phone__screen` / `collect` / `tap` / `intent` / `handoff`、`uiautomator dump` 只在需要原始树时用），交接落盘路径改到工作区 `handoff/`。 |
+# 插件
+P="${DSH_HOME:-$HOME/.dsh}/dsh-go/plugins/local-cache-gauge"
+mkdir -p "$P" && cp -r dsh-go-plugin/local-cache-gauge/* "$P"/
+node "${DSH_HOME:-$HOME/.dsh}/skills/dsh-go-plugin/kit/bin/check.mjs" "$P" --load
+dsh plugin --profile web add "$P"
+```
+
+手机本机引擎的 profile 是 `web`。装的是指向该目录的链接，**目录不能删**。装完重启一次引擎（App「引擎」页）——插件代码是加载时读入的。
+
+卸载：
+
+```bash
+dsh plugin --profile web remove local-cache-gauge
+rm -rf "$P"
+```
 
 ## 用法
 
 ```bash
-# 全量体检
-node skills/dsh_context_handoff/scripts/context_gauge.mjs
-
-# 单会话 / 最近会话 / JSON
-node skills/dsh_context_handoff/scripts/context_gauge.mjs --chat 插件
-node skills/dsh_context_handoff/scripts/context_gauge.mjs --current
+node skills/dsh_context_handoff/scripts/context_gauge.mjs            # 全部会话
+node skills/dsh_context_handoff/scripts/context_gauge.mjs --chat 插件 # 单会话
+node skills/dsh_context_handoff/scripts/context_gauge.mjs --current  # 最近活跃
 node skills/dsh_context_handoff/scripts/context_gauge.mjs --json
 
-# UI dump 裁剪
 python3 skills/dsh_ui_anchors/scripts/ui_prune.py /sdcard/ui_dump.xml
 ```
 
-装成 DSH 技能（本机已装）：
-
-```bash
-cp -r skills/dsh_context_handoff skills/dsh_ui_anchors ~/.dsh/skills/
-```
-
-之后新会话的可用技能列表里会出现 `dsh_context_handoff` 与 `dsh_ui_anchors`。
-
-## 本机实测输出
+输出：
 
 ```
 判定          窗口    峰值    消息  思考    膨胀   命中    标题
-留意          69K     69K     9     21K     1.0x   94.4%   下载并运行 dsh-purge 插件
+强烈建议交接  110K    110K    17    50K     1.1x   97.3%   下载并运行 dsh-purge 插件
 ```
 
-- 首条命中 0.0%（新会话必然，不是故障）
-- 常规命中 94.4%
-- 末条窗口 69K tok
+- **窗口** = 该步 `inputTokens + cacheReadTokens`（`inputTokens` 不含缓存部分）
+- **命中** = Σ`cacheReadTokens` / Σ(`inputTokens` + `cacheReadTokens`)，**跳过首条**（首条必然 0 %）
+- **膨胀** = 后半程平均思考字符 / 前半程平均
+
+## 插件显示什么
+
+| 位置 | 内容 |
+|---|---|
+| 输入框上方状态条 | `命中 97.3% · 110K`，点一下开面板 |
+| 回合脚注 | 该回合自己的命中率与窗口 |
+| 面板「缓存体检」 | 常规命中、当前窗口、峰值、首条命中、步数、思考累计、工具输出、每步命中率曲线；复制结果 / 刷新 |
+
+只读会话日志，不写、不改、不上传。
 
 ## 已知限制
 
-- 窗口是"该步发出的 prompt token"，不是客户端的 `currentWindowSize`；两者同量级但不完全相等。
-- 会话日志按帧追加；脚本尽量还原多帧，极端情况下最后一条可能缺失（`badLines` 会显示）。
-- 缓存命中率是整会话累计，别拿单步判断好坏。
-- `ui_prune.py` 仍需要 `android_shell` 能跑 `uiautomator dump`；用 MCP 的 `screen`/`collect` 就不需要它。
-
-## 许可
-
-沿用原仓库 MIT。
+- 窗口是该步发出的 prompt token，与客户端 `currentWindowSize` 同量级但不完全相等。
+- 会话日志按帧追加；极端情况下最后一次写入读不到时，插件沿用上一次读数。
+- `ui_prune.py` 需要 `android_shell` 能跑 `uiautomator dump`；日常用 `mcp__phone__screen` / `collect` 就不需要它。
+- 插件每 15 秒刷新一次，不做其它后台动作。

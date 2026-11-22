@@ -1,14 +1,14 @@
-# Operit Cache-Hit-Rate Playbook
+# Cache-Hit-Rate Playbook · Operit & DSH
 
 **English** · [简体中文](README.zh-CN.md)
 
-> A measurement-driven guide plus two ready-to-use **Operit Skills** for prompt-cache hygiene,
-> conversation hand-off, and UI-tree pruning.
+> A measurement-driven guide plus ready-to-use skills for prompt-cache hygiene, conversation
+> hand-off and UI-tree pruning — for **Operit** (original) and **DSH / dsh-go** (DeepSeek Harness, since v0.2.0).
 >
 > It answers one question honestly: **"my cache hit rate looks low — is that actually a problem?"**
 > (Short answer: usually not; and here is how to tell, what really costs you, and what to do.)
 
-**Contents:** [What this is](#what-this-is) · [Key findings](#key-findings-all-measured) · [Layout](#repository-layout) · [Install](#installation) · [Usage](#usage) · [Optional automation](#optional-scheduled-patrol-with-the-workflow-package) · [Limitations](#limitations--caveats) · [FAQ](#faq) · [Disclaimer](#disclaimer) · [License](#license)
+**Contents:** [What this is](#what-this-is) · [DSH edition](#dsh--dsh-go-edition) · [Key findings](#key-findings-all-measured) · [Layout](#repository-layout) · [Install](#installation) · [Usage](#usage) · [Optional automation](#optional-scheduled-patrol-with-the-workflow-package) · [Limitations](#limitations--caveats) · [FAQ](#faq) · [Disclaimer](#disclaimer) · [License](#license)
 
 ---
 
@@ -29,7 +29,26 @@ It also settles a myth: a widely-shared snippet claiming it "enables DeepSeek co
 
 ---
 
-> **DSH / dsh-go users**: this repo now ships a `dsh/` directory that ports the same methodology to DeepSeek Harness — a DSH handoff skill, phone UI anchor rules, and a native dsh-go plugin that shows cache hit rate and context window above the composer. The Operit content is unchanged. See [dsh/README.zh-CN.md](dsh/README.zh-CN.md) and [CHANGELOG.md](CHANGELOG.md).
+## DSH / dsh-go edition
+
+Since **v0.2.0** the same methodology also ships for **DeepSeek Harness**, side by side with the Operit edition:
+
+| | Operit | DSH / dsh-go |
+|---|---|---|
+| Data source | `room_db` backup | `$DSH_HOME/sessions/**/session.v4.jsonl.zstd` |
+| Reader | `context_gauge.py` (Python) | `context_gauge.mjs` (Node stdlib, zero deps) |
+| Window | `currentWindowSize` unreadable | `inputTokens + cacheReadTokens`, measured per step |
+| Thinking metric | share of message text | total chars + second-half / first-half growth |
+| UI control | Operit tools + `detail=full` | `mcp__phone__*`, `uiautomator dump` only when needed |
+
+DSH also gets a native plugin, `dsh/dsh-go-plugin/local-cache-gauge`, showing the hit rate and context window above the composer, a per-turn note, and a gauge panel.
+
+```bash
+node dsh/skills/dsh_context_handoff/scripts/context_gauge.mjs
+```
+
+Details: [dsh/README.md](dsh/README.md) · [CHANGELOG.md](CHANGELOG.md)
+
 
 ## Key findings (all measured)
 
@@ -43,7 +62,7 @@ It also settles a myth: a widely-shared snippet claiming it "enables DeepSeek co
 4. **Sampling parameters cannot fix caching.** DeepSeek defaults to `thinking.type=enabled`, where `temperature` / `top_p` have no effect, and the API exposes **no `seed`**.
 5. **Auto-summarization is a recurring cost — but only worth ~4–5 %.** Measured: the first request after a summary hit **51.97 %** vs **94.05 %** for regular requests (4.1× more uncached tokens). It is real but rarely the main cause; if you keep it, prefer the token-threshold trigger over the message-count trigger.
 6. **Full UI trees are a hidden token sink.** `detail=full` is ~40 KB ≈ 10k tokens for a single screen; heavy apps reach 50k–120k tokens. Prune before reasoning — that is a 91.1 % reduction.
-7. **`think` blocks grow with conversation length** (observed ratios rising 0 % → 26 % → 60 %+, with single messages exceeding 100k characters). Worse: **multiple `think` blocks inside one message break client-side folding**, so raw reasoning leaks into the message body. Root cause is in the client renderer — no data-layer flag exists. → **Hand off long conversations instead of pushing through.**
+7. **`think` blocks grow with conversation length** (observed ratios rising 0 % → 26 % → 60 %+, with single messages exceeding 100k characters). Worse: **multiple `think` blocks inside one message break client-side folding**, so raw reasoning leaks into the message body. Root cause is in the client renderer — no data-layer flag exists. → **Hand off long conversations instead of pushing through.** On DSH, thinking-as-a-share-of-text is a misleading number (a healthy session measured 50K chars of thinking against a few hundred of visible text); use total thinking chars and the second-half / first-half growth instead.
 
 ---
 
@@ -54,6 +73,9 @@ README.md                 # this file (English)
 README.zh-CN.md           # Chinese translation
 LICENSE                   # MIT
 .gitignore
+CHANGELOG.md
+
+# Operit edition (original)
 skills/
 ├── conversation_handoff/
 │   ├── SKILL.md                     # hand-off policy: thresholds, template, filters
@@ -61,6 +83,19 @@ skills/
 └── android_ui_automation/
     ├── SKILL.md                     # UI automation rules + prefix hygiene
     └── scripts/ui_prune.py          # UI dump → anchor list
+
+# DSH / dsh-go edition (v0.2.0)
+dsh/
+├── README.md / README.zh-CN.md
+├── skills/
+│   ├── dsh_context_handoff/
+│   │   ├── SKILL.md
+│   │   └── scripts/context_gauge.mjs # reads DSH session logs (Node stdlib)
+│   └── dsh_ui_anchors/
+│       ├── SKILL.md
+│       └── scripts/ui_prune.py
+└── dsh-go-plugin/
+    └── local-cache-gauge/           # native dsh-go plugin
 ```
 
 Dependency graph:
@@ -97,6 +132,21 @@ export OPERIT_BACKUP_DIR=<your backup dir>
 # or point at a specific archive
 python3 context_gauge.py --zip /path/to/room_db_backup_YYYY-MM-DD.zip
 ```
+
+### DSH / dsh-go
+
+```bash
+# 1) skills
+cp -r dsh/skills/dsh_context_handoff dsh/skills/dsh_ui_anchors "${DSH_HOME:-$HOME/.dsh}/skills/"
+
+# 2) native plugin (the on-device engine uses the "web" profile)
+P="${DSH_HOME:-$HOME/.dsh}/dsh-go/plugins/local-cache-gauge"
+mkdir -p "$P" && cp -r dsh/dsh-go-plugin/local-cache-gauge/* "$P"/
+node "${DSH_HOME:-$HOME/.dsh}/skills/dsh-go-plugin/kit/bin/check.mjs" "$P" --load
+dsh plugin --profile web add "$P"
+```
+
+Restart the engine once afterwards (App → Engine): plugin code is read at load time. Requirements: Node ≥ 22.15 (built-in zstd), Python 3 for the UI pruner.
 
 ---
 
